@@ -14,17 +14,10 @@ class _HomePageState extends State<HomePage> {
   String result = "Scan a QR code";
   String placeName = "";
 
-  // Map the QR code contents to their respective place names
   final Map<String, String> qrCodePlaceMap = {
     "Canteen PG": "Canteen PG", 
     "Canteen Langsat": "Canteen Langsat",
   };
-
-  Future<void> _logout(BuildContext context) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    Navigator.pushReplacementNamed(context, '/login');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,20 +44,15 @@ class _HomePageState extends State<HomePage> {
               cutOutSize: 300,
             ),
           ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  result,
-                  style: TextStyle(fontSize: 16, color: Colors.black),
-                ),
-                if (placeName.isNotEmpty)
-                  Text(
-                    "Place: $placeName",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-              ],
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ElevatedButton(
+                onPressed: _takeSnapshot,
+                child: Text('Take Snapshot'),
+              ),
             ),
           ),
         ],
@@ -73,49 +61,107 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onQRViewCreated(QRViewController controller) async {
-  qrController = controller;
+    qrController = controller;
 
-  Location location = Location();
-  LocationData? userLocation;
+    Location location = Location();
+    LocationData? userLocation;
 
-  bool _serviceEnabled;
-  PermissionStatus _permissionGranted;
+    bool _serviceEnabled;
+    PermissionStatus _permissionGranted;
 
-  _serviceEnabled = await location.serviceEnabled();
-  if (!_serviceEnabled) {
-    _serviceEnabled = await location.requestService();
+    _serviceEnabled = await location.serviceEnabled();
     if (!_serviceEnabled) {
-      return;
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) {
+        return;
+      }
     }
-  }
 
-  _permissionGranted = await location.hasPermission();
-  if (_permissionGranted == PermissionStatus.denied) {
-    _permissionGranted = await location.requestPermission();
-    if (_permissionGranted != PermissionStatus.granted) {
-      return;
+    _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        return;
+      }
     }
-  }
 
-  userLocation = await location.getLocation();
+    userLocation = await location.getLocation();
 
-  controller.scannedDataStream.listen((scanData) {
-    setState(() {
-      result = scanData.code ?? "No code found";
-      placeName = qrCodePlaceMap[result] ?? "Unknown Place";
+    controller.scannedDataStream.listen((scanData) {
+      final scanResult = scanData.code ?? "No code found";
+      final placeName = qrCodePlaceMap[scanResult] ?? "Unknown Place";
 
-      // Include location info if available
       if (userLocation != null) {
-        result += "\nLocation: Lat ${userLocation.latitude}, Long ${userLocation.longitude}";
+        final locationInfo = "\nLocation: Lat ${userLocation.latitude}, Long ${userLocation.longitude}";
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResultPage(
+              result: scanResult + locationInfo,
+              placeName: placeName,
+            ),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResultPage(
+              result: scanResult,
+              placeName: placeName,
+            ),
+          ),
+        );
       }
     });
-  });
-}
+  }
 
+  void _takeSnapshot() {
+    // Implement the snapshot feature here
+    // For example, you could pause scanning, capture the current frame, and then process it.
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Navigator.pushReplacementNamed(context, '/login');
+  }
 
   @override
   void dispose() {
     qrController?.dispose();
     super.dispose();
+  }
+}
+
+class ResultPage extends StatelessWidget {
+  final String result;
+  final String placeName;
+
+  ResultPage({required this.result, required this.placeName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Result'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Result: $result',
+              style: TextStyle(fontSize: 16),
+            ),
+            Text(
+              'Place: $placeName',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
