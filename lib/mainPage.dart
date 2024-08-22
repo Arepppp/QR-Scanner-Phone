@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:location/location.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'result_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -61,64 +62,62 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onQRViewCreated(QRViewController controller) async {
-    qrController = controller;
+  qrController = controller;
 
-    Location location = Location();
-    LocationData? userLocation;
+  Location location = Location();
+  LocationData? userLocation;
 
-    bool _serviceEnabled;
-    PermissionStatus _permissionGranted;
+  bool _serviceEnabled;
+  PermissionStatus _permissionGranted;
 
-    _serviceEnabled = await location.serviceEnabled();
+  _serviceEnabled = await location.serviceEnabled();
+  if (!_serviceEnabled) {
+    _serviceEnabled = await location.requestService();
     if (!_serviceEnabled) {
-      _serviceEnabled = await location.requestService();
-      if (!_serviceEnabled) {
-        return;
-      }
+      return;
     }
-
-    _permissionGranted = await location.hasPermission();
-    if (_permissionGranted == PermissionStatus.denied) {
-      _permissionGranted = await location.requestPermission();
-      if (_permissionGranted != PermissionStatus.granted) {
-        return;
-      }
-    }
-
-    userLocation = await location.getLocation();
-
-    controller.scannedDataStream.listen((scanData) {
-      final scanResult = scanData.code ?? "No code found";
-      final placeName = qrCodePlaceMap[scanResult] ?? "Unknown Place";
-
-      if (userLocation != null) {
-        final locationInfo = "\nLocation: Lat ${userLocation.latitude}, Long ${userLocation.longitude}";
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ResultPage(
-              result: scanResult + locationInfo,
-              placeName: placeName,
-            ),
-          ),
-        );
-      } else {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ResultPage(
-              result: scanResult,
-              placeName: placeName,
-            ),
-          ),
-        );
-      }
-    });
   }
 
-  void _takeSnapshot() {
-    // Implement the snapshot feature here
-    // For example, you could pause scanning, capture the current frame, and then process it.
+  _permissionGranted = await location.hasPermission();
+  if (_permissionGranted == PermissionStatus.denied) {
+    _permissionGranted = await location.requestPermission();
+    if (_permissionGranted != PermissionStatus.granted) {
+      return;
+    }
+  }
+
+  userLocation = await location.getLocation();
+
+  controller.scannedDataStream.listen((scanData) {
+    final scanResult = scanData.code ?? "No code found";
+    final placeName = qrCodePlaceMap[scanResult] ?? "Unknown Place";
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ResultPage(
+          result: scanResult,
+          placeName: placeName,
+          latitude: userLocation?.latitude,
+          longitude: userLocation?.longitude,
+        ),
+      ),
+    );
+  });
+}
+
+
+  void _takeSnapshot() async {
+    // Pause scanning to take a snapshot
+    await qrController?.pauseCamera();
+    
+    // Capture the snapshot using the method provided by the QRViewController package
+    // Unfortunately, QRViewController doesn't have a method to take a picture directly.
+    // Instead, you can use CameraController for taking a picture if needed, 
+    // or simply provide feedback to the user.
+
+    // Resume scanning after taking a snapshot (if required)
+    await qrController?.resumeCamera();
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -131,37 +130,5 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     qrController?.dispose();
     super.dispose();
-  }
-}
-
-class ResultPage extends StatelessWidget {
-  final String result;
-  final String placeName;
-
-  ResultPage({required this.result, required this.placeName});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Result'),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Result: $result',
-              style: TextStyle(fontSize: 16),
-            ),
-            Text(
-              'Place: $placeName',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
