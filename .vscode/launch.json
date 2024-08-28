@@ -26,7 +26,8 @@
             "request": "launch",
             "type": "dart",
             "flutterMode": "debug",
-            "noDebug": true
+            "noDebug": true,
+            "program": "lib/register.dart"
           }
     ]
 }

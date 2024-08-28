@@ -1,10 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // For Firestore database
 import 'package:shared_preferences/shared_preferences.dart';
+import 'register.dart';
 import 'mainPage.dart';
-import 'login.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,64 +23,49 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Register Demo',
+      title: 'Login Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: RegisterPage(), // The first page to open when the app starts
+      home: LoginPage(),
       routes: {
-        '/home': (context) =>
-            HomePage(), // Reference the HomePage from test.dart
-        '/login': (context) => LoginPage(),
+        '/home': (context) => HomePage(),
+        '/register': (context) => RegisterPage(),
       },
     );
   }
 }
 
-class RegisterPage extends StatelessWidget {
+class LoginPage extends StatelessWidget {
   final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
 
-  Future<void> _register(BuildContext context) async {
+  Future<void> _login(BuildContext context) async {
     String userId = _userIdController.text.trim();
     String password = _passwordController.text.trim();
-    String name = _nameController.text.trim();
 
-    if (userId.isNotEmpty && password.isNotEmpty && name.isNotEmpty) {
+    if (userId.isNotEmpty && password.isNotEmpty) {
       try {
-        // Register user with Firebase Auth
         UserCredential userCredential =
-            await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            await FirebaseAuth.instance.signInWithEmailAndPassword(
                 email: '$userId@example.com', // Treat Employee ID as email
                 password: password);
-
-        // Store user data in Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user?.uid)
-            .set({
-          'userId': userId,
-          'name': name,
-          'password': password,
-        });
 
         // Store credentials locally
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('userId', userId);
         await prefs.setString('authToken', 'dummyToken'); // Simulate a token
 
-        // Navigate to the LoginPage after successful registration
-        Navigator.pushReplacementNamed(context, '/login');
+        // Navigate to HomePage after successful login
+        Navigator.pushReplacementNamed(context, '/home');
       } on FirebaseAuthException catch (e) {
-        // Handle different error codes and show appropriate messages
         String errorMessage;
-        if (e.code == 'weak-password') {
-          errorMessage = 'The password provided is too weak.';
-        } else if (e.code == 'email-already-in-use') {
-          errorMessage = 'The account already exists for that Employee ID.';
+        if (e.code == 'user-not-found') {
+          errorMessage = 'No user found for that Employee ID.';
+        } else if (e.code == 'wrong-password') {
+          errorMessage = 'Incorrect password.';
         } else {
-          errorMessage = e.message ?? 'Registration failed';
+          errorMessage = e.message ?? 'Login failed';
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
@@ -89,7 +73,7 @@ class RegisterPage extends StatelessWidget {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter all fields')),
+        SnackBar(content: Text('Please enter both Employee ID and Password')),
       );
     }
   }
@@ -97,7 +81,7 @@ class RegisterPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Register LOTTE ID')),
+      appBar: AppBar(title: Text('Login')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -111,24 +95,19 @@ class RegisterPage extends StatelessWidget {
             TextField(
               controller: _passwordController,
               decoration: InputDecoration(labelText: 'Enter Password'),
-              obscureText: true, // Hide password input
-            ),
-            SizedBox(height: 20),
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: 'Enter Name'),
+              obscureText: true,
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => _register(context),
-              child: Text('Register'),
+              onPressed: () => _login(context),
+              child: Text('Login'),
             ),
             SizedBox(height: 20),
             TextButton(
               onPressed: () {
-                Navigator.pushReplacementNamed(context, '/login');
+                Navigator.pushReplacementNamed(context, '/register');
               },
-              child: Text('Already have an account? Log in'),
+              child: Text('Don\'t have an account? Register'),
             ),
           ],
         ),

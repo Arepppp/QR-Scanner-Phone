@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:location/location.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'result_page.dart';
 import 'scan_failed_page.dart';
 
@@ -15,6 +18,8 @@ class _HomePageState extends State<HomePage> {
   QRViewController? qrController;
   String result = "Scan a QR code";
   String placeName = "";
+  bool isScanningPaused = false;
+  int frameCount = 0;
 
   final Map<String, String> qrCodePlaceMap = {
     "Canteen PG": "Canteen PG",
@@ -46,6 +51,29 @@ class _HomePageState extends State<HomePage> {
               cutOutSize: 300,
             ),
           ),
+          Positioned(
+            top: 20,
+            left: 20,
+            child: Text(
+              'Frames: $frameCount',
+              style: TextStyle(
+                fontSize: 20,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          if (isScanningPaused)
+            Positioned(
+              bottom: 80,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: ElevatedButton(
+                  onPressed: _resumeScanning,
+                  child: Text('Resume Scanning'),
+                ),
+              ),
+            ),
           Positioned(
             bottom: 20,
             left: 0,
@@ -94,6 +122,8 @@ class _HomePageState extends State<HomePage> {
     userLocation = await location.getLocation();
 
     controller.scannedDataStream.listen((scanData) {
+      frameCount++; // Increment the frame count on each scan attempt
+
       final scanResult = scanData.code ?? "No code found";
       final placeName = qrCodePlaceMap[scanResult] ?? "Unknown Place";
 
@@ -101,17 +131,19 @@ class _HomePageState extends State<HomePage> {
         double userLatitude = userLocation.latitude!;
         double userLongitude = userLocation.longitude!;
 
-       // Example coordinates for Canteen PG
-        double minLatitude = 1.444482; // Replace with actual values
-        double maxLatitude = 1.44747;  // Replace with actual values
-        double minLongitude = 103.89266; // Replace with actual values
-        double maxLongitude = 103.896326; // Replace with actual values
+        double minLatitude = 1.444482;
+        double maxLatitude = 1.44747;
+        double minLongitude = 103.89266;
+        double maxLongitude = 103.896326;
 
         if (userLatitude >= minLatitude &&
             userLatitude <= maxLatitude &&
             userLongitude >= minLongitude &&
             userLongitude <= maxLongitude) {
-          // Location is valid
+          // Save the scan to Firestore
+          _saveScanToFirestore(placeName, userLatitude, userLongitude);
+
+          // Stop scanning and navigate to result page
           _stopScanning(); // Stop scanning after a successful scan
           Navigator.push(
             context,
@@ -125,18 +157,40 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         } else {
-          // Location is invalid
-          _stopScanning(); // Stop scanning after an unsuccessful scan
+          _stopScanning();
           _navigateToScanFailedPage(
               context, "Scanning failed: Out of allowed area");
         }
       } else {
-        // Handle location not found
-        _stopScanning(); // Stop scanning after an unsuccessful scan
+        _stopScanning();
         _navigateToScanFailedPage(
             context, "Scanning failed: Location not found");
       }
     });
+  }
+
+  void _saveScanToFirestore(
+      String placeName, double latitude, double longitude) async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      String userID = user.uid;
+      String scanDate =
+          DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(userID)
+          .collection('scans')
+          .add({
+            'placeName': placeName,
+            'scanDate': scanDate,
+            'latitude': latitude,
+            'longitude': longitude,
+          })
+          .then((value) => print("Scan data saved"))
+          .catchError((error) => print("Failed to save scan data: $error"));
+    }
   }
 
   void _navigateToScanFailedPage(BuildContext context, String errorMessage) {
@@ -149,17 +203,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _stopScanning() {
-    qrController?.pauseCamera(); // Pause the camera after a successful scan
+    qrController?.pauseCamera();
+    setState(() {
+      isScanningPaused = true;
+    });
+  }
+
+  void _resumeScanning() async {
+    await qrController?.resumeCamera();
+    setState(() {
+      isScanningPaused = false;
+    });
   }
 
   void _takeSnapshot() async {
-    // Pause scanning to take a snapshot
     await qrController?.pauseCamera();
 
     // Implement actual snapshot functionality if needed
-    // This might involve using a different package like `camera` to capture an image.
 
-    // Resume scanning after taking a snapshot (if required)
     await qrController?.resumeCamera();
   }
 
@@ -175,9 +236,9 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    qrController
-        ?.resumeCamera(); // Resume scanning when the user returns to this page
+    qrController?.resumeCamera();
   }
 }
