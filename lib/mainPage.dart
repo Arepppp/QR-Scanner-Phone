@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'result_page.dart';
 import 'scan_failed_page.dart';
+import 'scan_history.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -32,9 +33,30 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text('Home Page'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: () => _logout(context),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.menu),
+            onSelected: (value) {
+              if (value == 'Scan History') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ScanHistoryPage()),
+                );
+              } else if (value == 'Logout') {
+                _showLogoutConfirmation(context);
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              return [
+                PopupMenuItem<String>(
+                  value: 'Scan History',
+                  child: Text('Scan History'),
+                ),
+                PopupMenuItem<String>(
+                  value: 'Logout',
+                  child: Text('Logout'),
+                ),
+              ];
+            },
           ),
         ],
       ),
@@ -87,6 +109,34 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showLogoutConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Logout'),
+          content: Text('Are you sure you want to logout?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text('Logout'),
+              onPressed: () async {
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -105,7 +105,10 @@ class LoginPage extends StatelessWidget {
             SizedBox(height: 20),
             TextButton(
               onPressed: () {
-                Navigator.pushReplacementNamed(context, '/register');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RegisterPage()),
+                );
               },
               child: Text('Don\'t have an account? Register'),
             ),
