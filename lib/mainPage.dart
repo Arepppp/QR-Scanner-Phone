@@ -171,7 +171,7 @@ class _HomePageState extends State<HomePage> {
 
     userLocation = await location.getLocation();
 
-    controller.scannedDataStream.listen((scanData) {
+    controller.scannedDataStream.listen((scanData) async {
       frameCount++; // Increment the frame count on each scan attempt
 
       final scanResult = scanData.code ?? "No code found";
@@ -186,12 +186,20 @@ class _HomePageState extends State<HomePage> {
         double minLongitude = 103.89266;
         double maxLongitude = 103.896326;
 
-        if (userLatitude >= minLatitude &&
+        bool isValidLocation = userLatitude >= minLatitude &&
             userLatitude <= maxLatitude &&
             userLongitude >= minLongitude &&
-            userLongitude <= maxLongitude) {
+            userLongitude <= maxLongitude;
+
+        DateTime now = DateTime.now();
+        int currentHour = now.hour;
+
+        if (isValidLocation && (currentHour >= 8 && currentHour < 10)) {
+          String formattedDate = DateFormat('yyyy-MM-dd').format(now);
+          String formattedTime = DateFormat('HH:mm:ss').format(now);
+
           // Save the scan to Firestore
-          _saveScanToFirestore(placeName, userLatitude, userLongitude);
+          _saveScanToFirestore(placeName, formattedDate, formattedTime, userLatitude, userLongitude);
 
           // Stop scanning and navigate to result page
           _stopScanning(); // Stop scanning after a successful scan
@@ -209,7 +217,7 @@ class _HomePageState extends State<HomePage> {
         } else {
           _stopScanning();
           _navigateToScanFailedPage(
-              context, "Scanning failed: Out of allowed area");
+              context, isValidLocation ? 'Outside valid time range' : 'Outside valid location');
         }
       } else {
         _stopScanning();
@@ -220,13 +228,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _saveScanToFirestore(
-      String placeName, double latitude, double longitude) async {
+      String placeName, String date, String time, double latitude, double longitude) async {
     User? user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
       String userID = user.uid;
-      String scanDate =
-          DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
       FirebaseFirestore.instance
           .collection('users')
@@ -234,7 +240,8 @@ class _HomePageState extends State<HomePage> {
           .collection('scans')
           .add({
             'placeName': placeName,
-            'scanDate': scanDate,
+            'scanDate': date,
+            'scanTime': time,
             'latitude': latitude,
             'longitude': longitude,
           })
@@ -272,12 +279,6 @@ class _HomePageState extends State<HomePage> {
     // Implement actual snapshot functionality if needed
 
     await qrController?.resumeCamera();
-  }
-
-  Future<void> _logout(BuildContext context) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override

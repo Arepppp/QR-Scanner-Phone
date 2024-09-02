@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // For Firestore database
 import 'package:shared_preferences/shared_preferences.dart';
-import 'mainPage.dart';
-import 'login.dart';
+import 'mainPage.dart'; // Ensure you have this file or replace with your home page file
+import 'login.dart'; // Ensure you have this file or replace with your login page file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,11 +28,30 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: RegisterPage(), // The first page to open when the app starts
+      home: AuthWrapper(), // Use AuthWrapper for checking auth state
       routes: {
-        '/home': (context) =>
-            HomePage(), // Reference the HomePage from test.dart
+        '/home': (context) => HomePage(),
         '/login': (context) => LoginPage(),
+        '/register': (context) => RegisterPage(),
+      },
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.active) {
+          if (snapshot.hasData) {
+            return HomePage(); // User is logged in, show HomePage
+          } else {
+            return LoginPage(); // User is not logged in, show LoginPage
+          }
+        }
+        return Center(child: CircularProgressIndicator()); // Show loading indicator while checking auth state
       },
     );
   }

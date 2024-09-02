@@ -30,52 +30,46 @@ class ScanHistoryPage extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          record.placeName,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.calendar_today, size: 16),
-                            SizedBox(width: 8),
-                            Text(
-                              record.scanDate,
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.location_pin, size: 16),
-                            SizedBox(width: 8),
-                            Text(
-                              'Latitude: ${record.latitude.toStringAsFixed(5)}',
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Icon(Icons.location_pin, size: 16),
-                            SizedBox(width: 8),
-                            Text(
-                              'Longitude: ${record.longitude.toStringAsFixed(5)}',
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      ],
+                  child: ListTile(
+                    title: Text(
+                      record.placeName,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                    subtitle: Text(
+                        'Date: ${record.scanDate}\nLat: ${record.latitude.toStringAsFixed(5)}, Long: ${record.longitude.toStringAsFixed(5)}'),
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Scan Details'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Place: ${record.placeName}'),
+                                Text('Date: ${record.scanDate}'),
+                                Text('Latitude: ${record.latitude}'),
+                                Text('Longitude: ${record.longitude}'),
+                                Text('User ID: ${record.userId}'),
+                                Text('Name: ${record.name}'),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: Text('Close'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
                   ),
                 );
               },
@@ -91,6 +85,16 @@ class ScanHistoryPage extends StatelessWidget {
     List<ScanRecord> scanRecords = [];
 
     if (user != null) {
+      // Fetch user details
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      String userId = userDoc['userId'] ?? 'Unknown';
+      String name = userDoc['name'] ?? 'Unknown';
+
+      // Fetch scan records
       QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -104,6 +108,8 @@ class ScanHistoryPage extends StatelessWidget {
           scanDate: doc['scanDate'],
           latitude: doc['latitude'],
           longitude: doc['longitude'],
+          userId: userId,
+          name: name,
         );
       }).toList();
     }
@@ -117,11 +123,15 @@ class ScanRecord {
   final String scanDate;
   final double latitude;
   final double longitude;
+  final String userId;
+  final String name;
 
   ScanRecord({
     required this.placeName,
     required this.scanDate,
     required this.latitude,
     required this.longitude,
+    required this.userId,
+    required this.name,
   });
 }
