@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = "2.0.10" // Replace with the latest Kotlin version
+    ext.kotlin_version = "2.0.20" // Use the latest Kotlin version if available
     repositories {
         google()
         mavenCentral()
@@ -12,8 +12,7 @@ buildscript {
 plugins {
     id "com.android.application"
     id "kotlin-android"
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
-    id "dev.flutter.flutter-gradle-plugin"
+    id "dev.flutter.flutter-gradle-plugin" // Ensure this is correctly applied
     id 'com.google.gms.google-services'
 }
 
@@ -27,19 +26,22 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.flutter_project_test"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
         targetSdk = 34
         versionCode = flutter.versionCode.toInteger()
@@ -52,16 +54,14 @@ android {
     signingConfigs {
         release {
             storeFile file("my-release-key.jks")
-            storePassword "Suarez07@"
+            storePassword "Suarez07@" // Consider securing passwords
             keyAlias "my-key-alias"
-            keyPassword "Suarez07@"
+            keyPassword "Suarez07@" // Consider securing passwords
         }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig signingConfigs.release
         }
     }
