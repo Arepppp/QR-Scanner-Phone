@@ -1,26 +1,23 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // For Firestore database
 import 'package:shared_preferences/shared_preferences.dart';
 import 'mainPage.dart'; // Ensure you have this file or replace with your home page file
 import 'login.dart'; // Ensure you have this file or replace with your login page file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-      options: FirebaseOptions(
-          apiKey: "AIzaSyC2xioshGzhd0hU0whxjX5R5O9YtzCaSug",
-          authDomain: "flutter-project-test-414d0.firebaseapp.com",
-          projectId: "flutter-project-test-414d0",
-          storageBucket: "flutter-project-test-414d0.appspot.com",
-          messagingSenderId: "1067211645239",
-          appId: "1:1067211645239:web:0d9898712b799b26237ab2"));
+  
+  await Supabase.initialize(
+    url: 'https://eudnptkpagbjkhnasbpp.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1ZG5wdGtwYWdiamtobmFzYnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjUyNTgwNjgsImV4cCI6MjA0MDgzNDA2OH0.VzaMVXDED6n2uX2YnQriSORP3v_4itChXXAFWfMJ1Bg',
+  );
 
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -39,84 +36,90 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.active) {
-          if (snapshot.hasData) {
+          if (snapshot.data?.session != null) {
             return HomePage(); // User is logged in, show HomePage
           } else {
             return LoginPage(); // User is not logged in, show LoginPage
           }
         }
-        return Center(child: CircularProgressIndicator()); // Show loading indicator while checking auth state
+        return const Center(child: CircularProgressIndicator()); // Show loading indicator while checking auth state
       },
     );
   }
 }
+
 
 class RegisterPage extends StatelessWidget {
   final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
 
+  RegisterPage({super.key});
+
   Future<void> _register(BuildContext context) async {
-    String userId = _userIdController.text.trim();
-    String password = _passwordController.text.trim();
-    String name = _nameController.text.trim();
+  String userId = _userIdController.text.trim();
+  String password = _passwordController.text.trim();
+  String name = _nameController.text.trim();
 
-    if (userId.isNotEmpty && password.isNotEmpty && name.isNotEmpty) {
-      try {
-        // Register user with Firebase Auth
-        UserCredential userCredential =
-            await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                email: '$userId@example.com', // Treat Employee ID as email
-                password: password);
+  if (userId.isNotEmpty && password.isNotEmpty && name.isNotEmpty) {
+    try {
+      final email = '$userId@example.com'; // Supabase requires email format
 
-        // Store user data in Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user?.uid)
-            .set({
-          'userId': userId,
+      // Register user with Supabase Auth
+      final response = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      // Check if user registration was successful
+      if (response.user != null) {
+        final supabaseUserId = response.user!.id; // Get the Supabase user ID
+
+        // Store user data in Supabase database (without password)
+        await Supabase.instance.client.from('users').insert({
+          'userId': supabaseUserId,
           'name': name,
-          'password': password,
         });
 
         // Store credentials locally
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userId', userId);
-        await prefs.setString('authToken', 'dummyToken'); // Simulate a token
+        await prefs.setString('userId', supabaseUserId);
+        await prefs.setString('authToken', response.session?.accessToken ?? ''); // Store the token
 
         // Navigate to the LoginPage after successful registration
         Navigator.pushReplacementNamed(context, '/login');
-      } on FirebaseAuthException catch (e) {
-        // Handle different error codes and show appropriate messages
-        String errorMessage;
-        if (e.code == 'weak-password') {
-          errorMessage = 'The password provided is too weak.';
-        } else if (e.code == 'email-already-in-use') {
-          errorMessage = 'The account already exists for that Employee ID.';
-        } else {
-          errorMessage = e.message ?? 'Registration failed';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
       }
-    } else {
+    } on AuthException catch (e) {
+      // Show error message if there's an authentication error
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter all fields')),
+        SnackBar(content: Text(e.message)),
+      );
+    } catch (e) {
+      // Show generic error message for other exceptions
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
       );
     }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter all fields')),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Register LOTTE ID')),
+      appBar: AppBar(title: const Text('Register LOTTE ID')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -124,30 +127,30 @@ class RegisterPage extends StatelessWidget {
           children: [
             TextField(
               controller: _userIdController,
-              decoration: InputDecoration(labelText: 'Enter Employee ID'),
+              decoration: const InputDecoration(labelText: 'Enter Employee ID'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Enter Password'),
+              decoration: const InputDecoration(labelText: 'Enter Password'),
               obscureText: true, // Hide password input
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextField(
               controller: _nameController,
-              decoration: InputDecoration(labelText: 'Enter Name'),
+              decoration: const InputDecoration(labelText: 'Enter Name'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => _register(context),
-              child: Text('Register'),
+              child: const Text('Register'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextButton(
               onPressed: () {
                 Navigator.pushReplacementNamed(context, '/login');
               },
-              child: Text('Already have an account? Log in'),
+              child: const Text('Already have an account? Log in'),
             ),
           ],
         ),

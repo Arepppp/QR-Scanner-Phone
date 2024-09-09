@@ -27,7 +27,7 @@
             "type": "dart",
             "flutterMode": "debug",
             "noDebug": true,
-            "program": "lib/register.dart"
+            "program": "lib/login.dart"
           }
     ]
 }

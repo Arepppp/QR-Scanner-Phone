@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ScanHistoryPage extends StatelessWidget {
+  const ScanHistoryPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Scan History'),
+        title: const Text('Scan History'),
       ),
       body: FutureBuilder<List<ScanRecord>>(
         future: _fetchScanHistory(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('No scan history found.'));
+            return const Center(child: Text('No scan history found.'));
           } else {
             return ListView.builder(
               itemCount: snapshot.data!.length,
               itemBuilder: (context, index) {
                 ScanRecord record = snapshot.data![index];
                 return Card(
-                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   elevation: 4,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
@@ -33,7 +33,7 @@ class ScanHistoryPage extends StatelessWidget {
                   child: ListTile(
                     title: Text(
                       record.placeName,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -45,7 +45,7 @@ class ScanHistoryPage extends StatelessWidget {
                         context: context,
                         builder: (BuildContext context) {
                           return AlertDialog(
-                            title: Text('Scan Details'),
+                            title: const Text('Scan Details'),
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +63,7 @@ class ScanHistoryPage extends StatelessWidget {
                                 onPressed: () {
                                   Navigator.of(context).pop();
                                 },
-                                child: Text('Close'),
+                                child: const Text('Close'),
                               ),
                             ],
                           );
@@ -81,41 +81,66 @@ class ScanHistoryPage extends StatelessWidget {
   }
 
   Future<List<ScanRecord>> _fetchScanHistory() async {
-    User? user = FirebaseAuth.instance.currentUser;
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
     List<ScanRecord> scanRecords = [];
 
     if (user != null) {
       // Fetch user details
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final userResponse = await supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .single();
 
-      String userId = userDoc['userId'] ?? 'Unknown';
-      String name = userDoc['name'] ?? 'Unknown';
+      if (userResponse.error == null) {
+        final userData = userResponse.data as Map<String, dynamic>;
+        String userId = userData['userId'] ?? 'Unknown';
+        String name = userData['name'] ?? 'Unknown';
 
-      // Fetch scan records
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('scans')
-          .orderBy('scanDate', descending: true)
-          .get();
+        // Fetch scan records
+        final scanResponse = await supabase
+            .from('scans')
+            .select()
+            .eq('user_id', user.id)
+            .order('scanDate', ascending: false);
 
-      scanRecords = snapshot.docs.map((doc) {
-        return ScanRecord(
-          placeName: doc['placeName'],
-          scanDate: doc['scanDate'],
-          latitude: doc['latitude'],
-          longitude: doc['longitude'],
-          userId: userId,
-          name: name,
-        );
-      }).toList();
+        if (scanResponse.error == null) {
+          final scanData = scanResponse.data as List<dynamic>;
+
+          scanRecords = scanData.map((doc) {
+            return ScanRecord(
+              placeName: doc['placeName'],
+              scanDate: doc['scanDate'],
+              latitude: doc['latitude'],
+              longitude: doc['longitude'],
+              userId: userId,
+              name: name,
+            );
+          }).toList();
+        } else {
+          print("Failed to fetch scan records: ${scanResponse.error!.message}");
+        }
+      } else {
+        print("Failed to fetch user details: ${userResponse.error!.message}");
+      }
     }
 
     return scanRecords;
   }
+}
+
+extension on PostgrestList {
+  get error => null;
+  
+  get data => null;
+}
+
+extension on PostgrestMap {
+  get error => null;
+  
+  get data => null;
 }
 
 class ScanRecord {
