@@ -1,27 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ResultPage extends StatelessWidget {
   final String result;
-  final String placeName;
+  final String placename;
   final double? latitude;
   final double? longitude;
-  final String mealScanned; // New parameter for mealScanned
+  final String mealscanned; // New parameter for mealscanned
+  final String? empid; // empid is required
 
-  const ResultPage({super.key, 
+  const ResultPage({
+    super.key,
     required this.result,
-    required this.placeName,
+    required this.placename,
     this.latitude,
     this.longitude,
-    required this.mealScanned, // Initialize new parameter
+    required this.mealscanned,
+    required this.empid, // Initialize empid
   });
 
-  Future<Map<String, String>> _getUserInfo() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String userId = prefs.getString('userId') ?? 'Unknown ID';
-    String name = prefs.getString('name') ?? 'Unknown Name';
-    return {'userId': userId, 'name': name};
+  Future<Map<String, String?>> _fetchEmployeeDetails(String empId) async {
+    final response = await Supabase.instance.client
+        .from('employees')
+        .select('name')
+        .eq('empid', empId)
+        .single();
+
+    final data = response;
+    return {'name': data['name'] as String?};
   }
 
   @override
@@ -31,16 +38,16 @@ class ResultPage extends StatelessWidget {
     final formattedDate = DateFormat('yyyy-MM-dd').format(now);
     final formattedTime = DateFormat('HH:mm:ss').format(now);
 
-    return FutureBuilder<Map<String, String>>(
-      future: _getUserInfo(),
+    return FutureBuilder<Map<String, String?>>(
+      future: _fetchEmployeeDetails(empid ?? ''),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError || !snapshot.hasData) {
-          return const Center(child: Text('Error fetching user info.'));
+          return Center(child: Text('Error fetching employee details.'));
         } else {
-          final userId = snapshot.data!['userId']!;
-          final name = snapshot.data!['name']!;
+          final name = snapshot.data!['name'] ?? 'Unknown Name';
+
           return Scaffold(
             appBar: AppBar(
               title: const Text('Scan Result'),
@@ -60,7 +67,8 @@ class ResultPage extends StatelessWidget {
                     const SizedBox(height: 20),
                     const Text(
                       'Scan Successful!',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -69,10 +77,11 @@ class ResultPage extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
-                    if (placeName.isNotEmpty)
+                    if (placename.isNotEmpty)
                       Text(
-                        'Place: $placeName',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        'Place: $placename',
+                        style: const TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                     const SizedBox(height: 20),
@@ -91,25 +100,26 @@ class ResultPage extends StatelessWidget {
                       const SizedBox(height: 20),
                       Text(
                         'Location: Lat: $latitude, Long: $longitude',
-                        style: const TextStyle(fontSize: 16, color: Colors.black),
+                        style:
+                            const TextStyle(fontSize: 16, color: Colors.black),
                         textAlign: TextAlign.center,
                       ),
                     ],
                     const SizedBox(height: 20),
                     Text(
-                      'User ID: $userId',
+                      'Employee ID: $empid',
                       style: const TextStyle(fontSize: 16, color: Colors.black),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Name: $name',
+                      'Employee Name: $name',
                       style: const TextStyle(fontSize: 16, color: Colors.black),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Meal Scanned: $mealScanned', // Display mealScanned
+                      'Meal Scanned: $mealscanned',
                       style: const TextStyle(fontSize: 16, color: Colors.black),
                       textAlign: TextAlign.center,
                     ),

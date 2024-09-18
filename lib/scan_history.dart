@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ScanHistoryPage extends StatelessWidget {
@@ -11,7 +12,7 @@ class ScanHistoryPage extends StatelessWidget {
         title: const Text('Scan History'),
       ),
       body: FutureBuilder<List<ScanRecord>>(
-        future: _fetchScanHistory(),
+        future: _fetchScanHistory(context),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -32,14 +33,14 @@ class ScanHistoryPage extends StatelessWidget {
                   ),
                   child: ListTile(
                     title: Text(
-                      record.placeName,
+                      record.placename,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     subtitle: Text(
-                        'Date: ${record.scanDate}\nLat: ${record.latitude.toStringAsFixed(5)}, Long: ${record.longitude.toStringAsFixed(5)}'),
+                        'Date: ${record.scandate.toLocal()}\nLat: ${record.latitude.toStringAsFixed(5)}, Long: ${record.longitude.toStringAsFixed(5)}'),
                     onTap: () {
                       showDialog(
                         context: context,
@@ -50,11 +51,11 @@ class ScanHistoryPage extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Place: ${record.placeName}'),
-                                Text('Date: ${record.scanDate}'),
+                                Text('Place: ${record.placename}'),
+                                Text('Date: ${record.scandate.toLocal()}'),
                                 Text('Latitude: ${record.latitude}'),
                                 Text('Longitude: ${record.longitude}'),
-                                Text('User ID: ${record.userId}'),
+                                Text('User ID: ${record.empid}'),
                                 Text('Name: ${record.name}'),
                               ],
                             ),
@@ -80,83 +81,83 @@ class ScanHistoryPage extends StatelessWidget {
     );
   }
 
-  Future<List<ScanRecord>> _fetchScanHistory() async {
+  Future<List<ScanRecord>> _fetchScanHistory(BuildContext context) async {
     final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? empid = prefs.getString('empid');
 
     List<ScanRecord> scanRecords = [];
 
-    if (user != null) {
+    if (empid != null) {
       // Fetch user details
       final userResponse = await supabase
-          .from('users')
+          .from('employees')
           .select()
-          .eq('id', user.id)
+          .eq('empid', empid)
           .single();
 
-      if (userResponse.error == null) {
-        final userData = userResponse.data as Map<String, dynamic>;
-        String userId = userData['userId'] ?? 'Unknown';
-        String name = userData['name'] ?? 'Unknown';
-
-        // Fetch scan records
-        final scanResponse = await supabase
-            .from('scans')
-            .select()
-            .eq('user_id', user.id)
-            .order('scanDate', ascending: false);
-
-        if (scanResponse.error == null) {
-          final scanData = scanResponse.data as List<dynamic>;
-
-          scanRecords = scanData.map((doc) {
-            return ScanRecord(
-              placeName: doc['placeName'],
-              scanDate: doc['scanDate'],
-              latitude: doc['latitude'],
-              longitude: doc['longitude'],
-              userId: userId,
-              name: name,
-            );
-          }).toList();
-        } else {
-          print("Failed to fetch scan records: ${scanResponse.error!.message}");
-        }
-      } else {
-        print("Failed to fetch user details: ${userResponse.error!.message}");
+      if (userResponse == null) {
+        // Show error message using ScaffoldMessenger
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to fetch user details: $userResponse")),
+        );
+        return scanRecords;
       }
+
+      final userData = userResponse as Map<String, dynamic>;
+      String name = userData['name'] ?? 'Unknown';
+
+      // Fetch scan records
+      final scanResponse = await supabase
+          .from('scans')
+          .select()
+          .eq('empid', empid)
+          .order('scandate', ascending: false);
+
+      if (scanResponse == null) {
+        // Show error message using ScaffoldMessenger
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to fetch scan records: $scanResponse")),
+        );
+        return scanRecords;
+      }
+
+      final scanData = scanResponse as List<dynamic>;
+
+      scanRecords = scanData.map((doc) {
+        return ScanRecord(
+          placename: doc['placename'] ?? 'Unknown',
+          scandate: DateTime.parse(doc['scandate']),
+          latitude: doc['latitude'] ?? 0.0,
+          longitude: doc['longitude'] ?? 0.0,
+          empid: empid,
+          name: name,
+        );
+      }).toList();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text("Employee ID not found in SharedPreferences.")),
+      );
     }
 
     return scanRecords;
   }
 }
 
-extension on PostgrestList {
-  get error => null;
-  
-  get data => null;
-}
-
-extension on PostgrestMap {
-  get error => null;
-  
-  get data => null;
-}
-
 class ScanRecord {
-  final String placeName;
-  final String scanDate;
+  final String placename;
+  final DateTime scandate;
   final double latitude;
   final double longitude;
-  final String userId;
+  final String empid;
   final String name;
 
   ScanRecord({
-    required this.placeName,
-    required this.scanDate,
+    required this.placename,
+    required this.scandate,
     required this.latitude,
     required this.longitude,
-    required this.userId,
+    required this.empid,
     required this.name,
   });
 }

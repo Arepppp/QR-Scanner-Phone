@@ -28,7 +28,6 @@ class MyApp extends StatelessWidget {
       home: AuthWrapper(), // Use AuthWrapper for checking auth state
       routes: {
         '/home': (context) => HomePage(),
-        '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
       },
     );
@@ -46,8 +45,6 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.active) {
           if (snapshot.data?.session != null) {
             return HomePage(); // User is logged in, show HomePage
-          } else {
-            return LoginPage(); // User is not logged in, show LoginPage
           }
         }
         return const Center(child: CircularProgressIndicator()); // Show loading indicator while checking auth state
