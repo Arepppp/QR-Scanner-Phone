@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart'; // Add this import for hashing
 import 'dart:convert'; // For utf8.encode
-import 'mainPage.dart'; // Import your home page
+import 'scan_choosing_page.dart'; // Import your home page
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -49,10 +49,11 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: isLoggedIn ? HomePage() : LoginPage(initialized: initialized),
+      home: isLoggedIn ? ScanChoosingPage() : LoginPage(initialized: initialized),
       routes: {
         '/login': (context) => LoginPage(initialized: initialized),
-        '/home': (context) => HomePage(),
+        '/home': (context) => ScanChoosingPage(),
+        '/scan_choosing_page': (context) => ScanChoosingPage(),
       },
     );
   }

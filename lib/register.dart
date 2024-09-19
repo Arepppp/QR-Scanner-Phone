@@ -2,7 +2,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'mainPage.dart'; // Ensure you have this file or replace with your home page file
-import 'login.dart'; // Ensure you have this file or replace with your login page file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
