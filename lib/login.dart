@@ -10,8 +10,6 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  bool initialized = false; // Flag to track initialization
-
   try {
     await Supabase.initialize(
       url:
@@ -19,7 +17,6 @@ void main() async {
       anonKey:
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1ZG5wdGtwYWdiamtobmFzYnBwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNTI1ODA2OCwiZXhwIjoyMDQwODM0MDY4fQ.0CR3ty3yCTMAnAWKxo7NR8-V9_vH2Kz4TNDU9BkUvC0', // Replace with your Supabase Anon Key
     );
-    initialized = true; // Set flag to true if initialization is successful
   } catch (e) {
     print('Supabase initialization failed: $e'); // Log the error
   }
