@@ -56,10 +56,7 @@ class ResultPage3_0 extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.popUntil(context, (route) {
-                  // Check if the route is for scan_choosing_page
-                  return route.settings.name == '/scan_choosing_page';
-                });
+                Navigator.pushReplacementNamed(context, '/home');
               },
               child: Text('Back to Scan Choosing Page'),
             ),

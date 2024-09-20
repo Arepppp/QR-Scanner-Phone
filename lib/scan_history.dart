@@ -96,14 +96,6 @@ class ScanHistoryPage extends StatelessWidget {
           .eq('empid', empid)
           .single();
 
-      if (userResponse == null) {
-        // Show error message using ScaffoldMessenger
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to fetch user details: $userResponse")),
-        );
-        return scanRecords;
-      }
-
       final userData = userResponse as Map<String, dynamic>;
       String name = userData['name'] ?? 'Unknown';
 
@@ -113,14 +105,6 @@ class ScanHistoryPage extends StatelessWidget {
           .select()
           .eq('empid', empid)
           .order('scandate', ascending: false);
-
-      if (scanResponse == null) {
-        // Show error message using ScaffoldMessenger
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to fetch scan records: $scanResponse")),
-        );
-        return scanRecords;
-      }
 
       final scanData = scanResponse as List<dynamic>;
 

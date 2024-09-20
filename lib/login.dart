@@ -53,7 +53,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => LoginPage(initialized: initialized),
         '/home': (context) => ScanChoosingPage(),
-        '/scan_choosing_page': (context) => ScanChoosingPage(),
       },
     );
   }

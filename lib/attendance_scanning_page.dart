@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'result_page_3_0.dart';
-import 'package:location/location.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'result_page_2_0.dart'; // Update with actual file name
 import 'scan_failed_page_2_0.dart'; // Update with actual file name
 import 'login.dart'; // Update with actual file name
+import 'attendance_history.dart';
 
 class AttendanceScanningPage extends StatefulWidget {
   @override
@@ -19,6 +19,11 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
   QRViewController? qrController;
   bool isScanningPaused = false;
   String? action; // "check-in" or "check-out"
+
+  // Add a debounce variable
+  bool _isScanningAllowed = true; // Variable to control scan debouncing
+  final Duration _debounceDuration =
+      Duration(seconds: 5); // Set the debounce duration
 
   @override
   void initState() {
@@ -32,9 +37,27 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
       appBar: AppBar(
         title: Text('Attendance Scanning'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: _showLogoutConfirmation,
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'attendance_history') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AttendanceHistoryPage(), // Navigate to attendance history page
+                  ),
+                );
+              } else if (value == 'logout') {
+                _showLogoutConfirmation();
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              return {'attendance_history', 'logout'}.map((String choice) {
+                return PopupMenuItem<String>(
+                  value: choice,
+                  child: Text(choice == 'attendance_history' ? 'Attendance History' : 'Logout'),
+                );
+              }).toList();
+            },
           ),
         ],
       ),
@@ -144,27 +167,16 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
   void _onQRViewCreated(QRViewController controller) async {
     qrController = controller;
 
-    Location location = Location();
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? empid = prefs.getString('empid');
 
     controller.scannedDataStream.listen((scanData) async {
+      if (!_isScanningAllowed) return; // Ignore scans if not allowed
+
+      _isScanningAllowed = false; // Disable further scans
       final scanResult = scanData.code ?? "No code found";
       final DateTime now = DateTime.now();
       final String formattedDate = DateFormat('yyyy-MM-dd').format(now);
-      final String formattedTime = DateFormat('HH:mm:ss').format(now);
-
-      // Show debugging SnackBar with scan result and other data
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Scan Result: $scanResult\n'
-              'EmpID: $empid\n'
-              'Date: $formattedDate\n'
-              'Time: $formattedTime\n'
-              'Action: $action'),
-          duration: Duration(seconds: 4),
-        ),
-      );
 
       // Check if valid location and other conditions
       bool isValidLocation = await _checkValidLocation();
@@ -177,62 +189,25 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
             bool isLate = now.hour > 8 || (now.hour == 8 && now.minute > 30);
             String checkInNotice = isLate ? 'Late In' : 'On Time';
 
-            // Show a SnackBar with the data being sent to _saveAttendance
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Saving Attendance:\n'
-                    'EmpID: $empid\n'
-                    'Date: $formattedDate\n'
-                    'CheckInTime: $now\n'
-                    'CheckInNotice: $checkInNotice\n'
-                    'ScanResult: $scanResult'),
-                duration: Duration(seconds: 4),
-              ),
+            // Proceed with saving the attendance
+            await _saveAttendance(
+              empid,
+              formattedDate,
+              now,
+              checkInNotice,
+              scanResult,
             );
 
-            try {
-              // Proceed with saving the attendance
-              await _saveAttendance(
-                empid,
-                formattedDate,
-                now,
-                checkInNotice,
-                scanResult,
-              );
-
-              // Show a SnackBar with the data being navigated to ResultPage2_0
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Navigating to ResultPage2_0:\n'
-                    'Timestamp: $now\n'
-                    'Employee ID: $empid\n'
-                    'Check-In Notice: $checkInNotice\n'
-                    'Check-In Location: $scanResult',
-                  ),
-                  duration: Duration(seconds: 4),
-                ),
-              );
-
-              // Navigate to ResultPage2_0
-              _navigateToResultPage(
-                context,
-                true, // For check-in
-                now, // timestamp
-                empid: empid,
-                checkInNotice: checkInNotice,
-                checkInLocation:
-                    scanResult, // Assuming scanResult is used as location
-              );
-            } catch (e) {
-              // Handle any errors that occurred during saving
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Error saving attendance: $e'),
-                  duration: Duration(seconds: 4),
-                ),
-              );
-            }
+            // Navigate to ResultPage2_0
+            _navigateToResultPage(
+              context,
+              true, // For check-in
+              now, // timestamp
+              empid: empid,
+              checkInNotice: checkInNotice,
+              checkInLocation:
+                  scanResult, // Assuming scanResult is used as location
+            );
           } else {
             DateTime checkInTime = await _getCheckInTime(empid, formattedDate);
             _showMessage("Already checked in at ${checkInTime}.");
@@ -247,39 +222,12 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
                   now.hour < 17 || (now.hour == 17 && now.minute < 30);
               String checkOutNotice = isEarlyOut ? 'Early Out' : 'On Time';
 
-              // Show a SnackBar with the data being sent to _saveAttendance2
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Saving Attendance:\n'
-                      'EmpID: $empid\n'
-                      'Date: $formattedDate\n'
-                      'CheckOutTime: $now\n'
-                      'CheckOutNotice: $checkOutNotice\n'
-                      'ScanResult: $scanResult'),
-                  duration: Duration(seconds: 4),
-                ),
-              );
-
               await _saveAttendance2(
                 empid,
                 formattedDate,
                 now,
                 checkOutNotice,
                 scanResult,
-              );
-
-              // Show a SnackBar with the data being navigated to ResultPage3_0
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Navigating to ResultPage3_0:\n'
-                    'Timestamp: $now\n'
-                    'Employee ID: $empid\n'
-                    'Check-Out Notice: $checkOutNotice\n'
-                    'Check-Out Location: $scanResult',
-                  ),
-                  duration: Duration(seconds: 4),
-                ),
               );
 
               _navigateToResultPage(
@@ -304,43 +252,27 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
         _navigateToScanFailedPage(context, "Invalid location");
       }
 
-      // Pause the scanner for a short duration to prevent rapid scanning
+      // After processing the scan, set a timer to re-enable scanning
+      Future.delayed(_debounceDuration, () {
+        _isScanningAllowed =
+            true; // Allow scanning again after the debounce period
+      });
+
+      // Pause the scanner to prevent rapid scanning
       _stopScanning();
     });
   }
 
   Future<void> _saveAttendance(String empid, String date, DateTime? checkInTime,
       String? checkInNotice, String checkinlocation) async {
-    try {
-      final response =
-          await Supabase.instance.client.from('attendance').upsert({
-        'empid': empid,
-        'date': date,
-        'check_in_time': checkInTime?.toIso8601String(),
-        'check_in_notice': checkInNotice,
-        'check_in_location': checkinlocation,
-        // Add other fields if necessary
-      });
-
-      if (response.error != null) {
-        // Show error using SnackBar
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Failed to save check-in: ${response.error!.message}'),
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      // Show error using SnackBar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Exception: $e'),
-          duration: Duration(seconds: 4),
-        ),
-      );
-    }
+    await Supabase.instance.client.from('attendance').upsert({
+      'empid': empid,
+      'date': date,
+      'check_in_time': checkInTime?.toIso8601String(),
+      'check_in_notice': checkInNotice,
+      'check_in_location': checkinlocation,
+      // Add other fields if necessary
+    });
   }
 
   Future<void> _saveAttendance2(
@@ -349,37 +281,16 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
       DateTime? checkOutTime,
       String? checkOutNotice,
       String checkoutlocation) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('attendance')
-          .update({
-            'check_out_time': checkOutTime?.toIso8601String(),
-            'check_out_notice': checkOutNotice,
-            'check_out_location': checkoutlocation,
-            // Add other fields if necessary
-          })
-          .eq('empid', empid)
-          .eq('date', date);
-
-      if (response.error != null) {
-        // Show error using SnackBar
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Failed to save check-out: ${response.error!.message}'),
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      // Show error using SnackBar
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Exception: $e'),
-          duration: Duration(seconds: 4),
-        ),
-      );
-    }
+    await Supabase.instance.client
+        .from('attendance')
+        .update({
+          'check_out_time': checkOutTime?.toIso8601String(),
+          'check_out_notice': checkOutNotice,
+          'check_out_location': checkoutlocation,
+          // Add other fields if necessary
+        })
+        .eq('empid', empid)
+        .eq('date', date);
   }
 
   Future<void> _showMessage(String message) async {

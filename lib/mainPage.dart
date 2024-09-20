@@ -29,6 +29,9 @@ class _HomePageState extends State<HomePage> {
     "Canteen Tanjung Langsat": "Canteen Tanjung Langsat",
   };
 
+  Duration _debounceDuration = Duration(seconds: 5);
+  DateTime? _lastScanTime;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,6 +200,17 @@ class _HomePageState extends State<HomePage> {
     userLocation = await location.getLocation();
 
     controller.scannedDataStream.listen((scanData) async {
+      final currentScanTime = DateTime.now();
+
+      // Check if the time since the last scan is less than the debounce duration
+      if (_lastScanTime != null &&
+          currentScanTime.difference(_lastScanTime!) < _debounceDuration) {
+        return; // Ignore this scan
+      }
+
+      // Update the last scan time
+      _lastScanTime = currentScanTime;
+
       frameCount++; // Increment the frame count on each scan attempt
 
       final scanResult = scanData.code ?? "No code found";
@@ -316,24 +330,12 @@ class _HomePageState extends State<HomePage> {
           .single();
 
       if (response == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No records found.'),
-            backgroundColor: Colors.red,
-          ),
-        );
         return false;
       } else {
         return true; // Returns true if a record exists
       }
     } catch (e) {
       print('Exception occurred while checking meal scan status: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to check meal scan status.'),
-          backgroundColor: Colors.red,
-        ),
-      );
       return false;
     }
   }
@@ -341,19 +343,6 @@ class _HomePageState extends State<HomePage> {
   void _saveScanToSupabase(String placename, String date, String time,
       double latitude, double longitude, String mealscanned) async {
     final supabase = Supabase.instance.client;
-
-    // Debug: Check if Supabase is initialized
-    if (supabase == null) {
-      print('Supabase instance is not initialized.');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Supabase instance is not initialized."),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
 
     // Retrieve empid from SharedPreferences or another source
     SharedPreferences prefs = await SharedPreferences.getInstance();
