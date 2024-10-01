@@ -43,7 +43,8 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => AttendanceHistoryPage(), // Navigate to attendance history page
+                    builder: (context) =>
+                        AttendanceHistoryPage(), // Navigate to attendance history page
                   ),
                 );
               } else if (value == 'logout') {
@@ -54,107 +55,127 @@ class _AttendanceScanningPageState extends State<AttendanceScanningPage> {
               return {'attendance_history', 'logout'}.map((String choice) {
                 return PopupMenuItem<String>(
                   value: choice,
-                  child: Text(choice == 'attendance_history' ? 'Attendance History' : 'Logout'),
+                  child: Text(choice == 'attendance_history'
+                      ? 'Attendance History'
+                      : 'Logout'),
                 );
               }).toList();
             },
           ),
         ],
       ),
-      body: action == null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          action = 'check-in';
-                        });
-                        _startScanning();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        minimumSize: Size(200, 60),
-                        elevation: 5,
-                      ).copyWith(
-                        backgroundColor:
-                            WidgetStateProperty.resolveWith<Color?>(
-                          (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.hovered)) {
-                              return Colors.greenAccent;
-                            }
-                            return Colors.green;
-                          },
+      body: Column(
+        children: [
+          Expanded(
+            child: action == null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                action = 'check-in';
+                              });
+                              _startScanning();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              minimumSize: Size(200, 60),
+                              elevation: 5,
+                            ).copyWith(
+                              backgroundColor:
+                                  WidgetStateProperty.resolveWith<Color?>(
+                                (Set<WidgetState> states) {
+                                  if (states.contains(WidgetState.hovered)) {
+                                    return Colors.greenAccent;
+                                  }
+                                  return Colors.green;
+                                },
+                              ),
+                            ),
+                            child: Text('Check In'),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                action = 'check-out';
+                              });
+                              _startScanning();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              minimumSize: Size(200, 60),
+                              elevation: 5,
+                            ).copyWith(
+                              backgroundColor:
+                                  WidgetStateProperty.resolveWith<Color?>(
+                                (Set<WidgetState> states) {
+                                  if (states.contains(WidgetState.hovered)) {
+                                    return Colors.redAccent;
+                                  }
+                                  return Colors.red;
+                                },
+                              ),
+                            ),
+                            child: Text('Check Out'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    children: [
+                      Expanded(
+                        flex: 4,
+                        child: QRView(
+                          key: qrKey,
+                          onQRViewCreated: _onQRViewCreated,
+                          overlay: QrScannerOverlayShape(
+                            borderColor: Colors.red,
+                            borderRadius: 10,
+                            borderLength: 30,
+                            borderWidth: 10,
+                            cutOutSize: 300,
+                          ),
                         ),
                       ),
-                      child: Text('Check In'),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          action = 'check-out';
-                        });
-                        _startScanning();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        minimumSize: Size(200, 60),
-                        elevation: 5,
-                      ).copyWith(
-                        backgroundColor:
-                            WidgetStateProperty.resolveWith<Color?>(
-                          (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.hovered)) {
-                              return Colors.redAccent;
-                            }
-                            return Colors.red;
-                          },
+                      Expanded(
+                        flex: 1,
+                        child: Center(
+                          child: isScanningPaused
+                              ? ElevatedButton(
+                                  onPressed: _resumeScanning,
+                                  child: Text('Resume Scanning'),
+                                )
+                              : Text('Scanning...'),
                         ),
                       ),
-                      child: Text('Check Out'),
-                    ),
+                    ],
                   ),
-                ],
+          ),
+          // Footer with Image
+          Container(
+            padding: EdgeInsets.symmetric(
+                vertical: 10.0, horizontal: 22.0), // More padding for spacing
+            child: Center(
+              child: Image.network(
+                "https://assets.bharian.com.my/images/articles/LCT_1557473125.jpg",
+                height: 40, // Adjust height for visibility
+                fit: BoxFit.contain,
               ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: QRView(
-                    key: qrKey,
-                    onQRViewCreated: _onQRViewCreated,
-                    overlay: QrScannerOverlayShape(
-                      borderColor: Colors.red,
-                      borderRadius: 10,
-                      borderLength: 30,
-                      borderWidth: 10,
-                      cutOutSize: 300,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Center(
-                    child: isScanningPaused
-                        ? ElevatedButton(
-                            onPressed: _resumeScanning,
-                            child: Text('Resume Scanning'),
-                          )
-                        : Text('Scanning...'),
-                  ),
-                ),
-              ],
             ),
+          ),
+        ],
+      ),
     );
   }
 

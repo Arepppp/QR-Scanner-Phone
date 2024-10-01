@@ -19,46 +19,70 @@ class ResultPage2_0 extends StatelessWidget {
         "${timestamp.toLocal().toString().split(' ')[0]} ${timestamp.toLocal().toString().split(' ')[1]}";
 
     return Scaffold(
-      appBar: AppBar(title: Text('Check-In Result')),
-      body: Center(
+      appBar: AppBar(title: const Text('Check-In Result')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0), // Added padding for spacing
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.check_circle,
-              color: Colors.green,
-              size: 100.0,
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Check-In Successful',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Timestamp: $formattedDate',
-              style: TextStyle(fontSize: 18),
-            ),
-            Text(
-              'Employee ID: $empid',
-              style: TextStyle(fontSize: 18),
-            ),
-            if (checkInNotice != null)
-              Text(
-                'Check-In Notice: $checkInNotice',
-                style: TextStyle(fontSize: 18, color: Colors.orange),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 100.0,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Check-In Successful',
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Timestamp: $formattedDate',
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                    Text(
+                      'Employee ID: $empid',
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                    if (checkInNotice != null)
+                      Text(
+                        'Check-In Notice: $checkInNotice',
+                        style:
+                            const TextStyle(fontSize: 18, color: Colors.orange),
+                      ),
+                    if (checkInLocation != null)
+                      Text(
+                        'Location: $checkInLocation',
+                        style:
+                            const TextStyle(fontSize: 18, color: Colors.orange),
+                      ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushReplacementNamed(context, '/home');
+                      },
+                      child: const Text('Back to Scan Choosing Page'),
+                    ),
+                  ],
+                ),
               ),
-            if (checkInLocation != null)
-              Text(
-                'Location: $checkInLocation',
-                style: TextStyle(fontSize: 18, color: Colors.orange),
+            ),
+            // Footer with Image
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  vertical: 10.0, horizontal: 22.0), // More padding for spacing
+              child: Center(
+                child: Image.network(
+                  "https://web14.bernama.com/storage/photos/a26df8d233b4c81a46dd35dbcec12a1161f241cdb3922",
+                  height: 40, // Set the height of the footer image
+                  fit: BoxFit.contain,
+                ),
               ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushReplacementNamed(context, '/home');
-              },
-              child: Text('Back to Scan Choosing Page'),
             ),
           ],
         ),

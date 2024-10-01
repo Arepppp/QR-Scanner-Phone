@@ -11,72 +11,100 @@ class ScanHistoryPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Scan History'),
       ),
-      body: FutureBuilder<List<ScanRecord>>(
-        future: _fetchScanHistory(context),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No scan history found.'));
-          } else {
-            return ListView.builder(
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) {
-                ScanRecord record = snapshot.data![index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: ListTile(
-                    title: Text(
-                      record.placename,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Text(
-                        'Date: ${record.scandate.toLocal()}\nLat: ${record.latitude.toStringAsFixed(5)}, Long: ${record.longitude.toStringAsFixed(5)}'),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Scan Details'),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Place: ${record.placename}'),
-                                Text('Date: ${record.scandate.toLocal()}'),
-                                Text('Latitude: ${record.latitude}'),
-                                Text('Longitude: ${record.longitude}'),
-                                Text('User ID: ${record.empid}'),
-                                Text('Name: ${record.name}'),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                child: const Text('Close'),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0), // Added padding for spacing
+        child: Column(
+          children: [
+            Expanded(
+              child: FutureBuilder<List<ScanRecord>>(
+                future: _fetchScanHistory(context),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No scan history found.'));
+                  } else {
+                    return ListView.builder(
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (context, index) {
+                        ScanRecord record = snapshot.data![index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 16),
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: ListTile(
+                            title: Text(
+                              record.placename,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-                );
-              },
-            );
-          }
-        },
+                            ),
+                            subtitle: Text(
+                                'Date: ${record.scandate.toLocal()}\nLat: ${record.latitude.toStringAsFixed(5)}, Long: ${record.longitude.toStringAsFixed(5)}'),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: const Text('Scan Details'),
+                                    content: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Place: ${record.placename}'),
+                                          Text(
+                                              'Date: ${record.scandate.toLocal()}'),
+                                          Text('Latitude: ${record.latitude}'),
+                                          Text(
+                                              'Longitude: ${record.longitude}'),
+                                          Text('User ID: ${record.empid}'),
+                                          Text('Name: ${record.name}'),
+                                        ],
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                        },
+                                        child: const Text('Close'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  }
+                },
+              ),
+            ),
+            // Footer with Image using Expanded
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  vertical: 10.0, horizontal: 22.0), // More padding for spacing
+              child: Center(
+                child: Image.network(
+                  "https://web14.bernama.com/storage/photos/a26df8d233b4c81a46dd35dbcec12a1161f241cdb3922",
+                  height: 40, // Set the height of the footer image
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -90,11 +118,8 @@ class ScanHistoryPage extends StatelessWidget {
 
     if (empid != null) {
       // Fetch user details
-      final userResponse = await supabase
-          .from('employees')
-          .select()
-          .eq('empid', empid)
-          .single();
+      final userResponse =
+          await supabase.from('employees').select().eq('empid', empid).single();
 
       final userData = userResponse as Map<String, dynamic>;
       String name = userData['name'] ?? 'Unknown';
@@ -120,7 +145,8 @@ class ScanHistoryPage extends StatelessWidget {
       }).toList();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text("Employee ID not found in SharedPreferences.")),
+        SnackBar(
+            content: const Text("Employee ID not found in SharedPreferences.")),
       );
     }
 

@@ -13,7 +13,6 @@ class ScanChoosingPage extends StatefulWidget {
 }
 
 class _ScanChoosingPageState extends State<ScanChoosingPage> {
-
   @override
   void initState() {
     super.initState();
@@ -30,11 +29,11 @@ class _ScanChoosingPageState extends State<ScanChoosingPage> {
       return;
     }
 
-    // Fetch empid from user metadata
-    String? empid = prefs.getString('empid');
+    // Fetch empId from user metadata
+    String? empId = prefs.getString('empid');
 
-    // If empid is not available, handle the case
-    if (empid == null) {
+    // If empId is not available, handle the case
+    if (empId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Employee ID not found in SharedPreferences"),
@@ -45,14 +44,28 @@ class _ScanChoosingPageState extends State<ScanChoosingPage> {
       return;
     }
 
-    // Display a welcome message with empid
+    // Fetch employee name from the database using empId
+    String? employeeName = await _getEmployeeName(empId);
+
+    if (employeeName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to fetch employee name"),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Display a welcome message with the employee's name
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Welcome'),
-            content: Text('Welcome, $empid!'),
+            content: Text('Welcome, $employeeName!'),
             actions: <Widget>[
               TextButton(
                 child: const Text('OK'),
@@ -65,6 +78,21 @@ class _ScanChoosingPageState extends State<ScanChoosingPage> {
         },
       );
     });
+  }
+
+  Future<String?> _getEmployeeName(String empId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('employees') // Replace with your actual table name
+          .select('name')
+          .eq('empid', empId)
+          .single(); // Fetch a single row
+
+      return response['name'] as String;
+    } catch (e) {
+      print('Error fetching employee name: $e');
+      return null;
+    }
   }
 
   void _showLogoutConfirmation(BuildContext context) {
@@ -116,6 +144,8 @@ class _ScanChoosingPageState extends State<ScanChoosingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final double buttonHeight = MediaQuery.of(context).size.height * 0.35;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Scan Options'),
@@ -126,46 +156,111 @@ class _ScanChoosingPageState extends State<ScanChoosingPage> {
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              margin: EdgeInsets.symmetric(vertical: 10),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildImageButton(
                     context,
-                    MaterialPageRoute(builder: (context) => HomePage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(200, 60), // Set the size of the button
-                  textStyle: TextStyle(fontSize: 20), // Set the font size
-                  padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                ),
-                child: Text('Canteen Scanning'),
+                    title: 'Canteen Scanning',
+                    imageUrl:
+                        'https://img.etimg.com/thumb/width-1200,height-900,imgsize-309372,resizemode-75,msid-65916510/magazines/panache/how-the-humble-office-canteen-is-witnessing-a-gastronomic-makeover.jpg',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => HomePage()),
+                      );
+                    },
+                    buttonHeight: buttonHeight,
+                  ),
+                  _buildImageButton(
+                    context,
+                    title: 'Attendance Scanning',
+                    imageUrl:
+                        'https://www.mida.gov.my/wp-content/uploads/2020/08/pic1.jpg',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => AttendanceScanningPage()),
+                      );
+                    },
+                    buttonHeight: buttonHeight,
+                  ),
+                ],
               ),
             ),
-            Container(
-              margin: EdgeInsets.symmetric(vertical: 10),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => AttendanceScanningPage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(200, 60), // Set the size of the button
-                  textStyle: TextStyle(fontSize: 20), // Set the font size
-                  padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                ),
-                child: Text('Attendance Scanning'),
+          ),
+          // Footer with Image
+          // Footer with Image
+          Container(
+            padding: EdgeInsets.symmetric(
+                vertical: 10.0, horizontal: 22.0), // More padding for spacing
+            child: Center(
+              child: Image.network(
+                "https://assets.bharian.com.my/images/articles/LCT_1557473125.jpg",
+                height: 40, // Slightly increased height for better visibility
+                fit: BoxFit.contain,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Custom widget to create buttons with background images and faded effect
+  Widget _buildImageButton(
+    BuildContext context, {
+    required String title,
+    required String imageUrl,
+    required VoidCallback onPressed,
+    required double buttonHeight,
+  }) {
+    return Container(
+      height: buttonHeight,
+      margin: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background image with faded effect
+          ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              color: Colors.black
+                  .withOpacity(0.5), // Apply a dark overlay for fade effect
+              colorBlendMode: BlendMode.darken,
+            ),
+          ),
+          // Button content
+          Center(
+            child: ElevatedButton(
+              onPressed: onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors
+                    .transparent, // Make the button background transparent
+                shadowColor: Colors.transparent, // Remove button shadow
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+              ),
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 24,
+                  color:
+                      Colors.white, // Text color white on darkened background
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

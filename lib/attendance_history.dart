@@ -11,51 +11,76 @@ class AttendanceHistoryPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Attendance History'),
       ),
-      body: FutureBuilder<List<AttendanceRecord>>(
-        future: _fetchAttendanceHistory(context),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No attendance history found.'));
-          } else {
-            return ListView.builder(
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) {
-                final record = snapshot.data![index];
-                return ExpansionTile(
-                  title: Text('Date: ${record.date}'),
-                  subtitle: Text('Check In: ${record.checkInTime}'),
-                  children: [
-                    ListTile(
-                      title: const Text('Check Out'),
-                      subtitle: Text(record.checkOutTime),
-                    ),
-                    ListTile(
-                      title: const Text('Location In'),
-                      subtitle: Text(record.checkInLocation),
-                    ),
-                    ListTile(
-                      title: const Text('Location Out'),
-                      subtitle: Text(record.checkOutLocation),
-                    ),
-                    ListTile(
-                      title: const Text('Notice'),
-                      subtitle: Text(record.notice.isNotEmpty ? record.notice : 'N/A'),
-                    ),
-                  ],
-                );
-              },
-            );
-          }
-        },
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: FutureBuilder<List<AttendanceRecord>>(
+                future: _fetchAttendanceHistory(context),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                        child: Text('No attendance history found.'));
+                  } else {
+                    return ListView.builder(
+                      itemCount: snapshot.data!.length,
+                      itemBuilder: (context, index) {
+                        final record = snapshot.data![index];
+                        return ExpansionTile(
+                          title: Text('Date: ${record.date}'),
+                          subtitle: Text('Check In: ${record.checkInTime}'),
+                          children: [
+                            ListTile(
+                              title: const Text('Check Out'),
+                              subtitle: Text(record.checkOutTime),
+                            ),
+                            ListTile(
+                              title: const Text('Location In'),
+                              subtitle: Text(record.checkInLocation),
+                            ),
+                            ListTile(
+                              title: const Text('Location Out'),
+                              subtitle: Text(record.checkOutLocation),
+                            ),
+                            ListTile(
+                              title: const Text('Notice'),
+                              subtitle: Text(record.notice.isNotEmpty
+                                  ? record.notice
+                                  : 'N/A'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  }
+                },
+              ),
+            ),
+            // Footer with Image
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  vertical: 10.0, horizontal: 22.0), // More padding for spacing
+              child: Center(
+                child: Image.network(
+                  "https://web14.bernama.com/storage/photos/a26df8d233b4c81a46dd35dbcec12a1161f241cdb3922",
+                  height: 40, // Set a small height for the footer image
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<List<AttendanceRecord>> _fetchAttendanceHistory(BuildContext context) async {
+  Future<List<AttendanceRecord>> _fetchAttendanceHistory(
+      BuildContext context) async {
     final supabase = Supabase.instance.client;
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? empid = prefs.getString('empid');
@@ -75,8 +100,12 @@ class AttendanceHistoryPage extends StatelessWidget {
       attendanceRecords = attendanceData.map((doc) {
         return AttendanceRecord(
           date: doc['date'],
-          checkInTime: doc['check_in_time'] != null ? DateTime.parse(doc['check_in_time']).toLocal().toString() : 'Not Checked In',
-          checkOutTime: doc['check_out_time'] != null ? DateTime.parse(doc['check_out_time']).toLocal().toString() : 'Not Checked Out',
+          checkInTime: doc['check_in_time'] != null
+              ? DateTime.parse(doc['check_in_time']).toLocal().toString()
+              : 'Not Checked In',
+          checkOutTime: doc['check_out_time'] != null
+              ? DateTime.parse(doc['check_out_time']).toLocal().toString()
+              : 'Not Checked Out',
           checkInLocation: doc['check_in_location'] ?? 'N/A',
           checkOutLocation: doc['check_out_location'] ?? 'N/A',
           notice: _getNotice(doc),
@@ -84,7 +113,8 @@ class AttendanceHistoryPage extends StatelessWidget {
       }).toList();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text("Employee ID not found in SharedPreferences.")),
+        SnackBar(
+            content: const Text("Employee ID not found in SharedPreferences.")),
       );
     }
 
@@ -93,8 +123,12 @@ class AttendanceHistoryPage extends StatelessWidget {
 
   String _getNotice(Map<String, dynamic> doc) {
     // Logic for determining notice based on conditions
-    bool lateCheckIn = (doc['check_in_time'] != null && DateTime.parse(doc['check_in_time']).isAfter(DateTime.parse('${doc['date']} 08:30:00')));
-    bool earlyCheckOut = (doc['check_out_time'] != null && DateTime.parse(doc['check_out_time']).isBefore(DateTime.parse('${doc['date']} 17:30:00')));
+    bool lateCheckIn = (doc['check_in_time'] != null &&
+        DateTime.parse(doc['check_in_time'])
+            .isAfter(DateTime.parse('${doc['date']} 08:30:00')));
+    bool earlyCheckOut = (doc['check_out_time'] != null &&
+        DateTime.parse(doc['check_out_time'])
+            .isBefore(DateTime.parse('${doc['date']} 17:30:00')));
 
     if (lateCheckIn && earlyCheckOut) return 'Late In / Early Out';
     if (lateCheckIn) return 'Late In';

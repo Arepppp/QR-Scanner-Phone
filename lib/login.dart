@@ -3,7 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart'; // Add this import for hashing
 import 'dart:convert'; // For utf8.encode
-import 'scan_choosing_page.dart'; // Import your home page
+import 'scan_choosing_page.dart';
+import 'change_password_page.dart';
+import 'report_page.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -24,20 +26,27 @@ void main() async {
   // Check if user is already logged in
   SharedPreferences prefs = await SharedPreferences.getInstance();
   String? empId = prefs.getString('empid');
-
+  bool isSpecialUser = empId != null &&
+      (empId == 'canteen1' || empId == 'canteen2' || empId == 'admin');
   bool isAuthenticated = empId != null;
 
   runApp(MyApp(
     isLoggedIn: isAuthenticated,
+    isSpecialUser: isSpecialUser, // Pass the special user flag
     initialized: true, // Pass the initialized flag here
   ));
 }
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
+  final bool isSpecialUser; // Flag for special user type
   final bool initialized; // Flag for initialization status
 
-  const MyApp({super.key, required this.isLoggedIn, required this.initialized});
+  const MyApp(
+      {super.key,
+      required this.isLoggedIn,
+      required this.isSpecialUser,
+      required this.initialized});
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +55,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: isLoggedIn ? ScanChoosingPage() : LoginPage(initialized: initialized),
+      home: isLoggedIn
+          ? (isSpecialUser ? CanteenReportPage() : ScanChoosingPage())
+          : LoginPage(initialized: initialized),
       routes: {
         '/login': (context) => LoginPage(initialized: initialized),
         '/home': (context) => ScanChoosingPage(),
+        '/report': (context) => CanteenReportPage(),
       },
     );
   }
@@ -106,21 +118,31 @@ class _LoginPageState extends State<LoginPage> {
     String userId = _userIdController.text.trim();
     String password = _passwordController.text.trim();
 
-    String hashedPassword = hashPassword(password);
-
     if (userId.isNotEmpty && password.isNotEmpty) {
+      // Check for hardcoded credentials (canteen team and admin)
+      if ((userId == 'canteen1' && password == 'pasirgudang') ||
+          (userId == 'canteen2' && password == 'tanjunglangsat') ||
+          (userId == 'admin' && password == 'pgandtanjung')) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('empid', userId);
+        await prefs.setBool('isAuthenticated', true);
+        await prefs.setBool(
+            'isReportPageUser', true); // Flag to remember report page access
+
+        // Navigate to the report page directly
+        Navigator.pushReplacementNamed(context, '/report');
+        return; // Return early to avoid running Supabase logic
+      }
+
+      // Existing Supabase login logic
+      String hashedPassword = hashPassword(password);
+
       try {
         final response = await Supabase.instance.client.rpc('auth_user',
             params: {'p_empid': userId, 'p_password': hashedPassword}).single();
 
-        if (response == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error: No response from server')),
-          );
-          return;
-        }
-
-        if (response['empid'] == null) {
+        // Check if response is null
+        if (response == null || response['empid'] == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid Employee ID or Password')),
           );
@@ -129,25 +151,15 @@ class _LoginPageState extends State<LoginPage> {
 
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('empid', empId);
-
-          // Set the Supabase session variable
-          await Supabase.instance.client.rpc('set_config', params: {
-            'key': 'myapp.user_id',
-            'value': empId,
-          });
-
-          // Save a custom token or flag to SharedPreferences if needed
           await prefs.setBool('isAuthenticated', true);
 
-          // Show details dialog on successful login
-          _showDetailsDialog(context, empId);
-
-          // Navigate to HomePage after successful login
-          Navigator.pushReplacementNamed(
-            context,
-            '/home',
-            arguments: empId, // Pass empId as an argument
-          );
+          // Handle default password logic as before
+          bool isDefaultPassword = this.isDefaultPassword(hashedPassword);
+          if (isDefaultPassword) {
+            _promptPasswordChange(context, empId);
+          } else {
+            _navigateToHome(context, empId);
+          }
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -160,6 +172,59 @@ class _LoginPageState extends State<LoginPage> {
             content: Text('Please enter both Employee ID and Password')),
       );
     }
+  }
+
+  bool isDefaultPassword(String password) {
+    // Define your default password criteria here
+    return password ==
+        '9b3344e4190e292a915bab83829b36d6cbcb74f6a7faaee5291ac31e01b02d3c'; // Replace with your actual default logic
+  }
+
+// Prompt to change password
+  void _promptPasswordChange(BuildContext context, String empId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Change Password'),
+          content: const Text(
+              'You are using the default password. Please change your password, or you can choose to keep it.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Change Now'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChangePasswordPage(
+                        empId: empId), // Navigate to ChangePasswordPage
+                  ),
+                );
+              },
+            ),
+            TextButton(
+              child: const Text('Keep Current Password'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                // Navigate to home or report page based on your app flow
+                _navigateToHome(
+                    context, empId); // Assuming you want to navigate to home
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// Navigate to home page after login or password change
+  void _navigateToHome(BuildContext context, String empId) {
+    Navigator.pushReplacementNamed(
+      context,
+      '/home',
+      arguments: empId,
+    );
   }
 
   // Function to show details dialog
@@ -190,34 +255,55 @@ class _LoginPageState extends State<LoginPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextField(
-              controller: _userIdController,
-              decoration: const InputDecoration(labelText: 'Enter Employee ID'),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(
-                labelText: 'Enter Password',
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _passwordVisible ? Icons.visibility : Icons.visibility_off,
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextField(
+                    controller: _userIdController,
+                    decoration:
+                        const InputDecoration(labelText: 'Enter Employee ID'),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _passwordVisible = !_passwordVisible;
-                    });
-                  },
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Enter Password',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _passwordVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _passwordVisible = !_passwordVisible;
+                          });
+                        },
+                      ),
+                    ),
+                    obscureText: !_passwordVisible,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => _login(context),
+                    child: const Text('Login'),
+                  ),
+                ],
+              ),
+            ),
+            // Footer with Image
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  vertical: 10.0, horizontal: 22.0), // More padding for spacing
+              child: Center(
+                child: Image.network(
+                  "https://assets.bharian.com.my/images/articles/LCT_1557473125.jpg",
+                  height: 40, // Set a small height for the footer image
+                  fit: BoxFit.contain,
                 ),
               ),
-              obscureText: !_passwordVisible,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _login(context),
-              child: const Text('Login'),
             ),
           ],
         ),

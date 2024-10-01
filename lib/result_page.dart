@@ -52,79 +52,107 @@ class ResultPage extends StatelessWidget {
             appBar: AppBar(
               title: const Text('Scan Result'),
             ),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 100,
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Scan Successful!',
-                      style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Result: $result',
-                      style: const TextStyle(fontSize: 16, color: Colors.black),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    if (placename.isNotEmpty)
-                      Text(
-                        'Place: $placename',
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
+            body: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: 100,
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Scan Successful!',
+                              style: TextStyle(
+                                  fontSize: 24, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Result: $result',
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            if (placename.isNotEmpty)
+                              Text(
+                                'Place: $placename',
+                                style: const TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Date: $formattedDate',
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Time: $formattedTime',
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                            if (latitude != null && longitude != null) ...[
+                              const SizedBox(height: 20),
+                              Text(
+                                'Location: Lat: $latitude, Long: $longitude',
+                                style: const TextStyle(
+                                    fontSize: 16, color: Colors.black),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                            const SizedBox(height: 20),
+                            Text(
+                              'Employee ID: $empid',
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Employee Name: $name',
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Meal Scanned: $mealscanned',
+                              style: const TextStyle(
+                                  fontSize: 16, color: Colors.black),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Date: $formattedDate',
-                      style: const TextStyle(fontSize: 16, color: Colors.black),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Time: $formattedTime',
-                      style: const TextStyle(fontSize: 16, color: Colors.black),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (latitude != null && longitude != null) ...[
-                      const SizedBox(height: 20),
-                      Text(
-                        'Location: Lat: $latitude, Long: $longitude',
-                        style:
-                            const TextStyle(fontSize: 16, color: Colors.black),
-                        textAlign: TextAlign.center,
+                  ),
+                  // Footer with Image
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 10.0,
+                        horizontal: 22.0), // More padding for spacing
+                    child: Center(
+                      child: Image.network(
+                        "https://web14.bernama.com/storage/photos/a26df8d233b4c81a46dd35dbcec12a1161f241cdb3922",
+                        height: 40, // Set the height of the footer image
+                        fit: BoxFit.contain,
                       ),
-                    ],
-                    const SizedBox(height: 20),
-                    Text(
-                      'Employee ID: $empid',
-                      style: const TextStyle(fontSize: 16, color: Colors.black),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Employee Name: $name',
-                      style: const TextStyle(fontSize: 16, color: Colors.black),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Meal Scanned: $mealscanned',
-                      style: const TextStyle(fontSize: 16, color: Colors.black),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           );
