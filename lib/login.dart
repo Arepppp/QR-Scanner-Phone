@@ -5,7 +5,7 @@ import 'package:crypto/crypto.dart'; // Add this import for hashing
 import 'dart:convert'; // For utf8.encode
 import 'scan_choosing_page.dart';
 import 'change_password_page.dart';
-import 'report_page.dart';
+import 'reportPage.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -56,12 +56,12 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: isLoggedIn
-          ? (isSpecialUser ? CanteenReportPage() : ScanChoosingPage())
+          ? (isSpecialUser ? ReportPage() : ScanChoosingPage())
           : LoginPage(initialized: initialized),
       routes: {
         '/login': (context) => LoginPage(initialized: initialized),
         '/home': (context) => ScanChoosingPage(),
-        '/report': (context) => CanteenReportPage(),
+        '/report': (context) => ReportPage(),
       },
     );
   }
